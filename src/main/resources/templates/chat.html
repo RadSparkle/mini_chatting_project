@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Chat</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #chat-box { width: 400px; height: 300px; border: 1px solid #ccc; overflow: auto; margin-bottom: 10px; }
+        #message-input { width: 300px; }
+    </style>
+</head>
+<body>
+<div id="chat-box"></div>
+<input type="text" id="message-input" placeholder="Enter message..." />
+<button onclick="sendMessage()">Send</button>
+
+<script>
+    var stompClient = null;
+
+    function connect() {
+        var socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+            console.log('Connected: ' + frame);
+
+            stompClient.subscribe('/topic/public', function (message) {
+                var chatMessage = JSON.parse(message.body);
+                var chatBox = document.getElementById('chat-box');
+                var messageElement = document.createElement('div');
+                messageElement.appendChild(document.createTextNode(chatMessage.sender + ": " + chatMessage.content));
+                chatBox.appendChild(messageElement);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        });
+    }
+
+    function sendMessage() {
+        var messageInput = document.getElementById('message-input');
+        var messageContent = messageInput.value.trim();
+
+        if (messageContent && stompClient) {
+            var chatMessage = {
+                sender: "User",
+                content: messageContent,
+                type: 'CHAT'
+            };
+            stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+            messageInput.value = '';
+        }
+    }
+    window.onload = connect;
+</script>
+</body>
+</html>
